@@ -138,4 +138,34 @@ exports.createStep = functions.firestore
   });
 
 
+  exports.getJourneys = functions.https.onCall((data, context) =>{
+      const journeyIds = data;
+      const uid = context.auth.uid;
+
+      if(uid == null){
+        console.log("GETJOURNEYS: User not authenticated");
+        throw new functions.https.HttpsError('failed-precondition', 'The function must be called ' +
+        'while authenticated.');
+      }
+
+      return getJourneyFromIds(journeyIds);
+        
+  });
+
+
+let getJourneyFromIds = function (ids) {
+  return Promise.all(journeyIds.map(
+    journeyId => {
+      return ourJourneys.get(journeyId).then(doc => {
+        if (!doc.exists) {
+          console.log('No such document!');
+          throw new functions.https.HttpsError('not-found', 'Journey document not found ' +
+          'Journey with id '+ journeyId +' not found');
+        } else {
+          return doc;
+        }
+      })
+  }));
+}
+
 //createdBy will only exits inside a journey and a step object - userId, name, imageUrl, createdType: [user, journey, step]
