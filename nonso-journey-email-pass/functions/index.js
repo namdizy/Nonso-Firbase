@@ -1,0 +1,141 @@
+const functions = require('firebase-functions');
+
+const admin = require('firebase-admin');
+admin.initializeApp(functions.config().firebase);
+
+const admin_firestore = admin.firestore();                  // Initialize Cloud Firestore through Firebase
+const ourUsers = admin_firestore.collection('users');       //reference to collection
+const ourJourneys = admin_firestore.collection('journeys'); //reference to collection
+
+//CLOUD FUNCTION - CREATE USER
+exports.createUser = functions.auth.user().onCreate((user) => {
+
+  // //User Object Definition
+  // let userDoc = {
+  //   createdAt: user.metadata.creationTime,
+  //   createdJourneys : {
+  //     journeyId : []
+  //   },
+  //   email : user.email,
+  //   followingJourneys: {},
+  //   followingUsers : {},
+  //   followersUsers: {},
+  //   goal: '',
+  //   imageUri: '',
+  //   subscribedJourneys : {},
+  //   userId: user.uid,
+  //   userName : user.displayName,
+  //   updatedAt: user.metadata.creationTime,
+  //   flagUpdate: false
+  // };
+  //
+  // // Add a new document in collection "USERS"
+  // ourUsers.doc(user.uid).set(userDoc)
+  // .then(function() {
+  //     console.log("Document successfully written!");
+  //     return true;
+  // })
+  // .catch(function(error) {
+  //     console.error("Error writing document: ", error);
+  //     return true;
+  // });
+
+  // admin_firestore.auth().currentUser.sendEmailVerification().then(function() {
+  //   // Email sent.
+  //   console.log("Verification Email Sent!");
+  //   return true;
+  // }).catch(function(error) {
+  //   // An error happened.
+  //   console.error("Email Verification Error - ", error);
+  //   return true;
+  // });
+
+});
+
+//CLOUD FUNCTION - UPDATE USER
+//****Make sure flagUpdate is set to FALSE to write data in FIRESTORE *****
+exports.updateUser = functions.firestore
+    .document('users/{userId}')
+    .onUpdate((change, context) => {
+      const newValue = change.after.data();
+      console.log('New value:' +  JSON.stringify(newValue));
+
+      const previousValue = change.before.data();
+      console.log('Previous Value: ' + JSON.stringify(previousValue));
+
+      const userId = context.params.userId;
+
+     // perform desired operations ...
+     // Any time you write to the same document that triggered a function,
+     // you are at risk of creating an infinite loop. Use caution and ensure that
+     // you safely exit the function when no change is needed.
+     //how efficient is this????
+      if (newValue.imageUri == previousValue.imageUri) return null;
+
+    //get list of Journey IDs
+    // ourUsers.document(userId).collection('journeyIds')
+    //Update ImageUri for those JourneyIds
+
+     // Then return a promise of a set operation to update the doc
+     return change.after.ref.update({
+       updatedAt : admin.firestore.FieldValue.serverTimestamp(),
+       imageUri : newValue.imageUri
+     }, {merge: true});
+    });
+
+
+//CLOUD FUNCTION - CREATE JOURNEY
+exports.createJourney = functions.firestore
+    .document('journeys/{journeyId}')
+    .onCreate((snap, context) => {
+      const newValue = snap.data();
+      const journeyId = context.params.journeyId;
+      console.log("SNAP DATA: " + JSON.stringify(newValue));
+
+      //TODO: Use SNAP.DATA() for userId instead of HARD-CODED ID.
+      ourUsers.doc(newValue.createdBy.id)
+      .collection('journeyIds')
+      .add(
+        {journeyId: journeyId}
+      )
+      .then(function(docRef) {
+          console.log("JOURNEY CREATED - Document successfully written");
+          return true;
+      })
+      .catch(function(error) {
+          console.error("Error adding JOURNEY document: ", error);
+          return true;
+      });
+});
+
+exports.createStep = functions.firestore
+  .document('steps/{stepId}')
+  .onCreate((snap, context) => {
+    const newValue = snap.data();
+    const stepId = context.params.stepId;
+    console.log("SNAP DATA: " + JSON.stringify(newValue));
+    console.log("CONTEXT DATA: " + JSON.stringify(context.params));
+    //get JourneyId from Front End
+
+    //get snapId and update journeyId
+    ourJourneys.doc(newValue.createdBy.id)
+    .collection('stepIds')
+    .add(
+      { stepId : stepId }
+    )
+    .then(function(docRef) {
+        console.log("STEP CREATED - Document successfully written");
+        //Is it best practice to store journeyId with journeys doc??? Will journeyId be available when required based on Firestore APIs?
+        //get journeyId and update userId
+        //use docRef.id to update user object
+        return true;
+    })
+    .catch(function(error) {
+        console.error("Error adding STEP document: ", error);
+        return true;
+    });
+
+  });
+
+
+//createdBy will only exits inside a journey and a step object - userId, name, imageUrl, createdType: [user, journey, step]
