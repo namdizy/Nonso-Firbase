@@ -6,6 +6,7 @@ admin.initializeApp(functions.config().firebase);
 const admin_firestore = admin.firestore();                  // Initialize Cloud Firestore through Firebase
 const ourUsers = admin_firestore.collection('users');       //reference to collection
 const ourJourneys = admin_firestore.collection('journeys'); //reference to collection
+const outSteps = admin_firestore.collection('steps');
 
 //CLOUD FUNCTION - CREATE USER
 exports.createUser = functions.auth.user().onCreate((user) => {
@@ -142,6 +143,8 @@ exports.createStep = functions.firestore
         const journeyIds = data.ids;
         // const uid = context.auth.uid;
 
+
+        //TODO: Check context.auth, if null return. Make sure caller is authenticated, else return 
         // if(uid == null){
         //   console.log("GETJOURNEYS: User not authenticated");
         //   throw new functions.https.HttpsError('failed-precondition', 'The function must be called ' +
@@ -156,16 +159,30 @@ exports.createStep = functions.firestore
                 throw new functions.https.HttpsError('not-found', 'Journey document not found ' +
                 'Journey with id '+ journeyId +' not found');
               } else {
-                return doc;
+                  return doc.data();
               }
             })
         }));
 
     });
 
+  exports.getSteps = functions.https.onCall((data, context) => {
+    const stepIds = data.ids;
 
-  let getJourneyFromIds = function (ids) {
+    //TODO: Check context.auth, if null return. Make sure caller is authenticated, else return 
 
-  }
+    return Promise.all(stepIds.map(
+        stepId => {
+          return ourSteps.doc(stepId).get.then(doc => {
+              if (!doc.exists) {
+                console.log('No such document!');
+                throw new functions.https.HttpsError('not-found', 'Step document not found ' +
+                'Step with id '+ stepId +' not found');
+              } else {
+                return doc;
+              }
+          })
+        }));
+  });
 
 //createdBy will only exits inside a journey and a step object - userId, name, imageUrl, createdType: [user, journey, step]
