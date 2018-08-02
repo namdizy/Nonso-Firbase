@@ -159,7 +159,9 @@ exports.createStep = functions.firestore
                 throw new functions.https.HttpsError('not-found', 'Journey document not found ' +
                 'Journey with id '+ journeyId +' not found');
               } else {
-                  return doc.data();
+                  let data = doc.data();
+                  data["createdAt"] = data["createdAt"].toString();
+                  return data;
               }
             })
         }));
