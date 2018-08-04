@@ -157,7 +157,7 @@ exports.createStep = functions.firestore
               if (!doc.exists) {
                 console.log('No such document!');
                 throw new functions.https.HttpsError('not-found', 'Journey document not found ' +
-                'Journey with id '+ journeyId +' not found');
+                    'Journey with id '+ journeyId +' not found');
               } else {
                   let data = doc.data();
                   data["createdAt"] = data["createdAt"].toString();
@@ -177,11 +177,13 @@ exports.createStep = functions.firestore
         stepId => {
           return ourSteps.doc(stepId).get.then(doc => {
               if (!doc.exists) {
-                console.log('No such document!');
-                throw new functions.https.HttpsError('not-found', 'Step document not found ' +
-                'Step with id '+ stepId +' not found');
+                  console.log('No such document!');
+                  throw new functions.https.HttpsError('not-found', 'Step document not found ' +
+                      'Step with id '+ stepId +' not found');
               } else {
-                return doc;
+                  let data = doc.data();
+                  data["createdAt"] = data["createdAt"].toString();
+                  return data;
               }
           })
         }));
