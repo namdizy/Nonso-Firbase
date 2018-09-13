@@ -201,38 +201,46 @@ exports.updateCounter = functions.firestore
   .document('journeys/{journeyId}/{collectionId}/{id}')
   .onWrite((change, context) => {
 
-    var docRef = change.after.ref;
+    let docRef = change.after.ref;
+    let collectionId = context.params.collectionId;
 
-    if(context.params.collectionId == "likesCountShard"){
-    
+    if(collectionId == "likes_count_shard" || collectionId == "replies_count_shard"){
       //likesCountShard collection
       docRef.parent.get().then(doc =>{
         let total_count = 0;
         snapshot.forEach(doc => {
             total_count += doc.data().count;
         });
-
-        //post docuument reference
-        docRef.parent.parent.update({
+        
+        if(collectionId == "likes_count_shard"){
+          //post docuument reference
+          docRef.parent.parent.update({
             likesCount: total_count
-        })
-        .then(function() {
+          })
+          .then(function() {
             console.log("Likes count updated to: " + total_count);
-        })
-        .catch(function(error) {
+          })
+          .catch(function(error) {
             // The document probably doesn't exist.
             console.error("Error updating likes count: ", error);
-        });
-
+          });
+        }
+        else if(collectionId == "replies_count_shard"){
+          //post docuument reference
+          docRef.parent.parent.update({
+            repliesCount: total_count
+          })
+          .then(function() {
+            console.log("Replies count updated to: " + total_count);
+          })
+          .catch(function(error) {
+            // The document probably doesn't exist.
+            console.error("Error updating likes count: ", error);
+          });
+        }
       });
     }
   });
 
-   // If we set `/users/marie/incoming_messages/134` to {body: "Hello"} then
-      // context.params.userId == "marie";
-      // context.params.messageCollectionId == "incoming_messages";
-      // context.params.messageId == "134";
-      // ... and ...
-      // change.after.data() == {body: "Hello"}
 
 //createdBy will only exits inside a journey and a step object - userId, name, imageUrl, createdType: [user, journey, step]
