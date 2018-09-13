@@ -12,57 +12,57 @@ const postCollectionRef = admin_firestore.collection("post");
 //CLOUD FUNCTION - UPDATE USER
 //****Make sure flagUpdate is set to FALSE to write data in FIRESTORE *****
 exports.updateUser = functions.firestore
-    .document('users/{userId}')
-    .onUpdate((change, context) => {
-      const newValue = change.after.data();
-      console.log('New value:' +  JSON.stringify(newValue));
+  .document('users/{userId}')
+  .onUpdate((change, context) => {
+    const newValue = change.after.data();
+    console.log('New value:' +  JSON.stringify(newValue));
 
-      const previousValue = change.before.data();
-      console.log('Previous Value: ' + JSON.stringify(previousValue));
+    const previousValue = change.before.data();
+    console.log('Previous Value: ' + JSON.stringify(previousValue));
 
-      const userId = context.params.userId;
+    const userId = context.params.userId;
 
-     // perform desired operations ...
-     // Any time you write to the same document that triggered a function,
-     // you are at risk of creating an infinite loop. Use caution and ensure that
-     // you safely exit the function when no change is needed.
-     //how efficient is this????
-      if (newValue.imageUri == previousValue.imageUri) return null;
+    // perform desired operations ...
+    // Any time you write to the same document that triggered a function,
+    // you are at risk of creating an infinite loop. Use caution and ensure that
+    // you safely exit the function when no change is needed.
+    //how efficient is this????
+    if (newValue.imageUri == previousValue.imageUri) return null;
 
-    //get list of Journey IDs
-    // ourUsers.document(userId).collection('journeyIds')
-    //Update ImageUri for those JourneyIds
+  //get list of Journey IDs
+  // ourUsers.document(userId).collection('journeyIds')
+  //Update ImageUri for those JourneyIds
 
-     // Then return a promise of a set operation to update the doc
-     return change.after.ref.update({
-       updatedAt : admin.firestore.FieldValue.serverTimestamp(),
-       imageUri : newValue.imageUri
-     }, {merge: true});
-    });
+    // Then return a promise of a set operation to update the doc
+    return change.after.ref.update({
+      updatedAt : admin.firestore.FieldValue.serverTimestamp(),
+      imageUri : newValue.imageUri
+    }, {merge: true});
+});
 
 
 //CLOUD FUNCTION - CREATE JOURNEY
 exports.createJourney = functions.firestore
-    .document('journeys/{journeyId}')
-    .onCreate((snap, context) => {
-      const newValue = snap.data();
-      const journeyId = context.params.journeyId;
-      console.log("SNAP DATA: " + JSON.stringify(newValue));
+  .document('journeys/{journeyId}')
+  .onCreate((snap, context) => {
+    const newValue = snap.data();
+    const journeyId = context.params.journeyId;
+    console.log("SNAP DATA: " + JSON.stringify(newValue));
 
-      //TODO: Use SNAP.DATA() for userId instead of HARD-CODED ID.
-      ourUsers.doc(newValue.createdBy.id)
-      .collection('journeys')
-      .add(
-        {journeyId: journeyId}
-      )
-      .then(function(docRef) {
-          console.log("JOURNEY CREATED - Document successfully written");
-          return true;
-      })
-      .catch(function(error) {
-          console.error("Error adding JOURNEY document: ", error);
-          return true;
-      });
+    //TODO: Use SNAP.DATA() for userId instead of HARD-CODED ID.
+    ourUsers.doc(newValue.createdBy.id)
+    .collection('journeys')
+    .add(
+      {journeyId: journeyId}
+    )
+    .then(function(docRef) {
+        console.log("JOURNEY CREATED - Document successfully written");
+        return true;
+    })
+    .catch(function(error) {
+        console.error("Error adding JOURNEY document: ", error);
+        return true;
+    });
 });
 
 exports.createStep = functions.firestore
@@ -88,37 +88,37 @@ exports.createStep = functions.firestore
         return true;
     });
 
-  });
+});
 
 
   exports.getJourneys = functions.https.onCall((data, context) =>{
-        const journeyIds = data.ids;
-        // const uid = context.auth.uid;
+    const journeyIds = data.ids;
+    // const uid = context.auth.uid;
 
 
-        //TODO: Check context.auth, if null return. Make sure caller is authenticated, else return 
-        // if(uid == null){
-        //   console.log("GETJOURNEYS: User not authenticated");
-        //   throw new functions.https.HttpsError('failed-precondition', 'The function must be called ' +
-        //   'while authenticated.');
-        // }
+    //TODO: Check context.auth, if null return. Make sure caller is authenticated, else return 
+    // if(uid == null){
+    //   console.log("GETJOURNEYS: User not authenticated");
+    //   throw new functions.https.HttpsError('failed-precondition', 'The function must be called ' +
+    //   'while authenticated.');
+    // }
 
-        return Promise.all(journeyIds.map(
-          journeyId => {
-            return ourJourneys.doc(journeyId).get().then(doc => {
-              if (!doc.exists) {
-                console.log('No such document!');
-                throw new functions.https.HttpsError('not-found', 'Journey document not found ' +
-                    'Journey with id '+ journeyId +' not found');
-              } else {
-                  let data = doc.data();
-                  data["createdAt"] = data["createdAt"].toString();
-                  return data;
-              }
-            })
-        }));
+    return Promise.all(journeyIds.map(
+      journeyId => {
+        return ourJourneys.doc(journeyId).get().then(doc => {
+          if (!doc.exists) {
+            console.log('No such document!');
+            throw new functions.https.HttpsError('not-found', 'Journey document not found ' +
+                'Journey with id '+ journeyId +' not found');
+          } else {
+              let data = doc.data();
+              data["createdAt"] = data["createdAt"].toString();
+              return data;
+          }
+        })
+    }));
 
-    });
+  });
 
   exports.getSteps = functions.https.onCall((data, context) => {
     const stepIds = data.ids;
