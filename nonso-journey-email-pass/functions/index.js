@@ -189,4 +189,49 @@ exports.createStep = functions.firestore
         }));
   });
 
+
+/*
+* This function listens for changes in the post subcollection likes shard 
+* When the shard count is updated the function will update parents likeCount variable
+* @params: collectionId: the collection where change occured, this could be a post collection or likes shard collection
+*                    id: the document being updated 
+*/
+
+exports.updateCounter = functions.firestore
+  .document('journeys/{journeyId}/{collectionId}/{id}')
+  .onWrite((change, context) => {
+    
+    var data = change.after.data();
+    var postDocumentRef = data.postDocumentRef;
+
+    if(context.params.collectionId == "likesCountShard"){
+      
+      postDocumentRef.collection("likesCountShard").get().then(doc =>{
+        let total_count = 0;
+        snapshot.forEach(doc => {
+            total_count += doc.data().count;
+        });
+        
+        postDocumentRef.update({
+            likesCount: total_count
+        })
+        .then(function() {
+            console.log("Likes count updated to: " + total_count);
+        })
+        .catch(function(error) {
+            // The document probably doesn't exist.
+            console.error("Error updating likes count: ", error);
+        });
+
+      });
+    }
+  });
+
+   // If we set `/users/marie/incoming_messages/134` to {body: "Hello"} then
+      // context.params.userId == "marie";
+      // context.params.messageCollectionId == "incoming_messages";
+      // context.params.messageId == "134";
+      // ... and ...
+      // change.after.data() == {body: "Hello"}
+
 //createdBy will only exits inside a journey and a step object - userId, name, imageUrl, createdType: [user, journey, step]
