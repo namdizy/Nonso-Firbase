@@ -142,29 +142,6 @@ exports.createStep = functions.firestore
   });
 
 
-  exports.createPost = functions.firestore
-  .document('post/{postId}')
-  .onCreate((snap, context) => {
-    const newValue = snap.data();
-    const postId = context.params.postId;
-  
-    //get snapId and update journeyId
-    ourJourneys.doc(newValue.journeyId)
-    .collection('post')
-    .add(
-      { postId : postId }
-    )
-    .then(function(docRef) {
-        console.log("Post Created - Document successfully written");
-        return true;
-    })
-    .catch(function(error) {
-        console.error("Error adding postID to Journey document: ", error);
-        return true;
-    });
-
-  });
-
 /*
 * This function listens for changes in the post subcollection likes shard 
 * When the shard count is updated the function will update parents likeCount variable
