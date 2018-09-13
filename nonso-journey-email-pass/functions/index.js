@@ -6,52 +6,8 @@ admin.initializeApp(functions.config().firebase);
 const admin_firestore = admin.firestore();                  // Initialize Cloud Firestore through Firebase
 const ourUsers = admin_firestore.collection('users');       //reference to collection
 const ourJourneys = admin_firestore.collection('journeys'); //reference to collection
-const outSteps = admin_firestore.collection('steps');
-
-//CLOUD FUNCTION - CREATE USER
-exports.createUser = functions.auth.user().onCreate((user) => {
-
-  // //User Object Definition
-  // let userDoc = {
-  //   createdAt: user.metadata.creationTime,
-  //   createdJourneys : {
-  //     journeyId : []
-  //   },
-  //   email : user.email,
-  //   followingJourneys: {},
-  //   followingUsers : {},
-  //   followersUsers: {},
-  //   goal: '',
-  //   imageUri: '',
-  //   subscribedJourneys : {},
-  //   userId: user.uid,
-  //   userName : user.displayName,
-  //   updatedAt: user.metadata.creationTime,
-  //   flagUpdate: false
-  // };
-  //
-  // // Add a new document in collection "USERS"
-  // ourUsers.doc(user.uid).set(userDoc)
-  // .then(function() {
-  //     console.log("Document successfully written!");
-  //     return true;
-  // })
-  // .catch(function(error) {
-  //     console.error("Error writing document: ", error);
-  //     return true;
-  // });
-
-  // admin_firestore.auth().currentUser.sendEmailVerification().then(function() {
-  //   // Email sent.
-  //   console.log("Verification Email Sent!");
-  //   return true;
-  // }).catch(function(error) {
-  //   // An error happened.
-  //   console.error("Email Verification Error - ", error);
-  //   return true;
-  // });
-
-});
+const stepsCollectionRef = admin_firestore.collection('steps');
+const postCollectionRef = admin_firestore.collection("post");
 
 //CLOUD FUNCTION - UPDATE USER
 //****Make sure flagUpdate is set to FALSE to write data in FIRESTORE *****
@@ -95,7 +51,7 @@ exports.createJourney = functions.firestore
 
       //TODO: Use SNAP.DATA() for userId instead of HARD-CODED ID.
       ourUsers.doc(newValue.createdBy.id)
-      .collection('journeyIds')
+      .collection('journeys')
       .add(
         {journeyId: journeyId}
       )
@@ -114,13 +70,9 @@ exports.createStep = functions.firestore
   .onCreate((snap, context) => {
     const newValue = snap.data();
     const stepId = context.params.stepId;
-    console.log("SNAP DATA: " + JSON.stringify(newValue));
-    console.log("CONTEXT DATA: " + JSON.stringify(context.params));
-    //get JourneyId from Front End
 
-    //get snapId and update journeyId
     ourJourneys.doc(newValue.createdBy.id)
-    .collection('stepIds')
+    .collection('steps')
     .add(
       { stepId : stepId }
     )
@@ -190,6 +142,29 @@ exports.createStep = functions.firestore
   });
 
 
+  exports.createPost = functions.firestore
+  .document('post/{postId}')
+  .onCreate((snap, context) => {
+    const newValue = snap.data();
+    const postId = context.params.postId;
+  
+    //get snapId and update journeyId
+    ourJourneys.doc(newValue.journeyId)
+    .collection('post')
+    .add(
+      { postId : postId }
+    )
+    .then(function(docRef) {
+        console.log("Post Created - Document successfully written");
+        return true;
+    })
+    .catch(function(error) {
+        console.error("Error adding postID to Journey document: ", error);
+        return true;
+    });
+
+  });
+
 /*
 * This function listens for changes in the post subcollection likes shard 
 * When the shard count is updated the function will update parents likeCount variable
@@ -213,7 +188,6 @@ exports.updateCounter = functions.firestore
         });
         
         if(collectionId == "likes_count_shard"){
-          //post docuument reference
           docRef.parent.parent.update({
             likesCount: total_count
           })
@@ -221,12 +195,10 @@ exports.updateCounter = functions.firestore
             console.log("Likes count updated to: " + total_count);
           })
           .catch(function(error) {
-            // The document probably doesn't exist.
             console.error("Error updating likes count: ", error);
           });
         }
         else if(collectionId == "replies_count_shard"){
-          //post docuument reference
           docRef.parent.parent.update({
             repliesCount: total_count
           })
@@ -234,7 +206,6 @@ exports.updateCounter = functions.firestore
             console.log("Replies count updated to: " + total_count);
           })
           .catch(function(error) {
-            // The document probably doesn't exist.
             console.error("Error updating likes count: ", error);
           });
         }
