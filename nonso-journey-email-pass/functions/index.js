@@ -201,7 +201,6 @@ exports.updateCounter = functions.firestore
   .document('journeys/{journeyId}/{collectionId}/{id}')
   .onWrite((change, context) => {
 
-    var data = change.after.data();
     var docRef = change.after.ref;
 
     if(context.params.collectionId == "likesCountShard"){
@@ -212,7 +211,6 @@ exports.updateCounter = functions.firestore
         snapshot.forEach(doc => {
             total_count += doc.data().count;
         });
-        
 
         //post docuument reference
         docRef.parent.parent.update({
