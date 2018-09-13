@@ -200,19 +200,22 @@ exports.createStep = functions.firestore
 exports.updateCounter = functions.firestore
   .document('journeys/{journeyId}/{collectionId}/{id}')
   .onWrite((change, context) => {
-    
+
     var data = change.after.data();
-    var postDocumentRef = data.postDocumentRef;
+    var docRef = change.after.ref;
 
     if(context.params.collectionId == "likesCountShard"){
-      
-      postDocumentRef.collection("likesCountShard").get().then(doc =>{
+    
+      //likesCountShard collection
+      docRef.parent.get().then(doc =>{
         let total_count = 0;
         snapshot.forEach(doc => {
             total_count += doc.data().count;
         });
         
-        postDocumentRef.update({
+
+        //post docuument reference
+        docRef.parent.parent.update({
             likesCount: total_count
         })
         .then(function() {
