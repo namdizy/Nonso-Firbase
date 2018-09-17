@@ -145,50 +145,77 @@ exports.createStep = functions.firestore
 /*
 * This function listens for changes in the post subcollection likes shard 
 * When the shard count is updated the function will update parents likeCount variable
+* 
 * @params: collectionId: the collection where change occured, this could be a post collection or likes shard collection
 *                    id: the document being updated 
 */
 
 exports.updateCounter = functions.firestore
-  .document('journeys/{journeyId}/{collectionId}/{id}')
-  .onWrite((change, context) => {
+    .document('journeys/{journeyId}/{collectionId}/{document=**}')
+    .onWrite((change, context) => {
 
-    let docRef = change.after.ref;
-    let collectionId = context.params.collectionId;
+      const docRef = change.after.ref;
+      const eventType = context.eventType;
+      const collectionId =  docRef.parent.id;
+      //const uid = context.auth.uid;
+      console.log("Update Counter called!");
+      console.log("Event type: "+ eventType);
+      console.log("collection name: " + docRef.parent.id);
 
-    if(collectionId == "likes_count_shard" || collectionId == "replies_count_shard"){
-      //likesCountShard collection
-      docRef.parent.get().then(doc =>{
-        let total_count = 0;
-        snapshot.forEach(doc => {
-            total_count += doc.data().count;
+
+      if(collectionId == "likes_count_shard" || collectionId == "replies_count_shard"){
+        //likesCountShard collection
+        docRef.parent.get().then(snapshot =>{
+          let total_count = 0;
+          snapshot.forEach(doc => {
+              total_count += doc.data().count;
+          });
+          
+          if(collectionId == "likes_count_shard"){
+            docRef.parent.parent.update({
+              likesCount: total_count
+            })
+            .then(function() {
+              console.log("Likes count updated to: " + total_count);
+            })
+            .catch(function(error) {
+              console.error("Error updating likes count: ", error);
+            });
+          }
+          else if(collectionId == "replies_count_shard"){
+            docRef.parent.parent.update({
+              repliesCount: total_count
+            })
+            .then(function() {
+              console.log("Replies count updated to: " + total_count);
+            })
+            .catch(function(error) {
+              console.error("Error updating likes count: ", error);
+            });
+          }
         });
-        
-        if(collectionId == "likes_count_shard"){
-          docRef.parent.parent.update({
-            likesCount: total_count
-          })
-          .then(function() {
-            console.log("Likes count updated to: " + total_count);
-          })
-          .catch(function(error) {
-            console.error("Error updating likes count: ", error);
-          });
-        }
-        else if(collectionId == "replies_count_shard"){
-          docRef.parent.parent.update({
-            repliesCount: total_count
-          })
-          .then(function() {
-            console.log("Replies count updated to: " + total_count);
-          })
-          .catch(function(error) {
-            console.error("Error updating likes count: ", error);
-          });
-        }
-      });
-    }
+      }
   });
 
+  exports.getUsers = functions.https.onCall((data, context) =>{
+    const userIds = data.ids;
+    
+    return Promise.all(userIds.map(
+      userId => {
+        return ourUsers.doc(userId).get().then(doc => {
+          if (!doc.exists) {
+            console.log('No such document!');
+            throw new functions.https.HttpsError('not-found', 'User document not found ' +
+                'User with id '+ userId +' not found');
+          } else {
+              let data = doc.data();
+              console.log("The users: + " + data.toString());
+              data["createdAt"] = data["createdAt"].toString();
+              return data;
+          }
+        })
+    }));
+
+  });
 
 //createdBy will only exits inside a journey and a step object - userId, name, imageUrl, createdType: [user, journey, step]
