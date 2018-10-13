@@ -216,6 +216,40 @@ exports.updateCounter = functions.firestore
         })
     }));
 
+
+
+
   });
 
 //createdBy will only exits inside a journey and a step object - userId, name, imageUrl, createdType: [user, journey, step]
+
+
+
+
+exports.createStep = functions.firestore
+  .document('steps/{stepId}')
+  .onDelete((snap, context) => {
+    const step = snap.data();
+    
+});
+
+
+
+exports.deleteJourney = functions.firestore
+  .document('steps/{stepId}')
+  .onDelete((snap, context) => {
+    const step = snap.data();
+    
+
+    //get all step ids for this journey
+    //arry of step ids;
+    //forloop inside delete them
+    
+    ourSteps.doc(stepid).delete();
+
+    deleteStep(step)
+});
+
+
+
+
