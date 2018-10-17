@@ -3,57 +3,40 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
 
-const admin_firestore = admin.firestore();                  // Initialize Cloud Firestore through Firebase
+const admin_firestore = admin.firestore();
+const admin_storage = admin.storage();                  // Initialize Cloud Firestore through Firebase
 const ourUsers = admin_firestore.collection('users');       //reference to collection
 const ourJourneys = admin_firestore.collection('journeys'); //reference to collection
-const outSteps = admin_firestore.collection('steps');
+const ourSteps = admin_firestore.collection('steps');
 
 //CLOUD FUNCTION - CREATE USER
-exports.createUser = functions.auth.user().onCreate((user) => {
+// exports.createUser = functions.auth.user().onCreate((user) => {
+//   //CREARE AN EMPTY JOURNEY SUB_COLLECTION
+//
+// });
 
-  // //User Object Definition
-  // let userDoc = {
-  //   createdAt: user.metadata.creationTime,
-  //   createdJourneys : {
-  //     journeyId : []
-  //   },
-  //   email : user.email,
-  //   followingJourneys: {},
-  //   followingUsers : {},
-  //   followersUsers: {},
-  //   goal: '',
-  //   imageUri: '',
-  //   subscribedJourneys : {},
-  //   userId: user.uid,
-  //   userName : user.displayName,
-  //   updatedAt: user.metadata.creationTime,
-  //   flagUpdate: false
-  // };
-  //
-  // // Add a new document in collection "USERS"
-  // ourUsers.doc(user.uid).set(userDoc)
-  // .then(function() {
-  //     console.log("Document successfully written!");
-  //     return true;
-  // })
-  // .catch(function(error) {
-  //     console.error("Error writing document: ", error);
-  //     return true;
-  // });
+exports.createUser = functions.firestore
+  .document('users/{userId}')
+  .onCreate((snap, context) => {
+    const newValue = snap.data();
 
-  // admin_firestore.auth().currentUser.sendEmailVerification().then(function() {
-  //   // Email sent.
-  //   console.log("Verification Email Sent!");
-  //   return true;
-  // }).catch(function(error) {
-  //   // An error happened.
-  //   console.error("Email Verification Error - ", error);
-  //   return true;
-  // });
-
+    // //Initialize JOURNEY SUB_COLLECTION
+    // ourUsers.doc(context.params.userId)
+    // .collection('journeyIds')
+    // .doc('initialization')
+    // .set(
+    //   {init: true}
+    // )
+    // .then(function(docRef) {
+    //     console.log("JOURNEY CREATED - Document successfully written");
+    //     return true;
+    // })
+    // .catch(function(error) {
+    //     console.error("Error adding JOURNEY document: ", error);
+    //     return true;
+    // });
 });
 
-//CLOUD FUNCTION - UPDATE USER
 //****Make sure flagUpdate is set to FALSE to write data in FIRESTORE *****
 exports.updateUser = functions.firestore
     .document('users/{userId}')
@@ -71,7 +54,30 @@ exports.updateUser = functions.firestore
      // you are at risk of creating an infinite loop. Use caution and ensure that
      // you safely exit the function when no change is needed.
      //how efficient is this????
-      if (newValue.imageUri == previousValue.imageUri) return null;
+      if (newValue.imageUri == previousValue.imageUri) {
+        ourUsers.doc(userId).collection('journeyIds')
+        .get().then(function(querySnapshot){
+          querySnapshot.forEach(function(doc) {
+        // doc.data() is never undefined for query doc snapshots
+        //console.log(doc.id, " => ", doc.data());
+        console.log(userId);
+        console.log(doc.id);
+            ourUsers.doc(userId)
+            .collection('journeyIds').doc(doc.id)
+            .update({
+              updated : true
+            })
+            .then(function() {
+                console.log("JOURNEY - Document successfully updated!");
+            })
+            .catch(function(error) {
+                // The document probably doesn't exist.
+                console.error("JOURNEY - Error updating document: ", error);
+            });
+          });
+        });
+        return null;
+      }
 
     //get list of Journey IDs
     // ourUsers.document(userId).collection('journeyIds')
@@ -85,7 +91,6 @@ exports.updateUser = functions.firestore
     });
 
 
-//CLOUD FUNCTION - CREATE JOURNEY
 exports.createJourney = functions.firestore
     .document('journeys/{journeyId}')
     .onCreate((snap, context) => {
@@ -93,7 +98,6 @@ exports.createJourney = functions.firestore
       const journeyId = context.params.journeyId;
       console.log("SNAP DATA: " + JSON.stringify(newValue));
 
-      //TODO: Use SNAP.DATA() for userId instead of HARD-CODED ID.
       ourUsers.doc(newValue.createdBy.id)
       .collection('journeyIds')
       .add(
@@ -107,6 +111,22 @@ exports.createJourney = functions.firestore
           console.error("Error adding JOURNEY document: ", error);
           return true;
       });
+
+      // //Initialize STEP SUB_COLLECTION
+      // ourJourneys.doc(journeyId)
+      // .collection('stepIds')
+      // .doc('initialization')
+      // .set(
+      //   {init: true}
+      // )
+      // .then(function(docRef) {
+      //     console.log("JOURNEY CREATED - STEP INIT - Document successfully written");
+      //     return true;
+      // })
+      // .catch(function(error) {
+      //     console.error("Error adding JOURNEY - STEP INIT document: ", error);
+      //     return true;
+      // });
 });
 
 exports.createStep = functions.firestore
@@ -144,7 +164,7 @@ exports.createStep = functions.firestore
         // const uid = context.auth.uid;
 
 
-        //TODO: Check context.auth, if null return. Make sure caller is authenticated, else return 
+        //TODO: Check context.auth, if null return. Make sure caller is authenticated, else return
         // if(uid == null){
         //   console.log("GETJOURNEYS: User not authenticated");
         //   throw new functions.https.HttpsError('failed-precondition', 'The function must be called ' +
@@ -171,11 +191,11 @@ exports.createStep = functions.firestore
   exports.getSteps = functions.https.onCall((data, context) => {
     const stepIds = data.ids;
 
-    //TODO: Check context.auth, if null return. Make sure caller is authenticated, else return 
+    //TODO: Check context.auth, if null return. Make sure caller is authenticated, else return
 
     return Promise.all(stepIds.map(
         stepId => {
-          return ourSteps.doc(stepId).get.then(doc => {
+          return ourSteps.doc(stepId).get().then(doc => {
               if (!doc.exists) {
                   console.log('No such document!');
                   throw new functions.https.HttpsError('not-found', 'Step document not found ' +
@@ -190,3 +210,185 @@ exports.createStep = functions.firestore
   });
 
 //createdBy will only exits inside a journey and a step object - userId, name, imageUrl, createdType: [user, journey, step]
+
+exports.deleteUser = functions.firestore
+    .document('users/{userId}')
+    .onDelete((snap, context) => {
+      // Get an object representing the document prior to deletion
+      // e.g. {'name': 'Marie', 'age': 66}
+      const deletedValue = snap.data();
+      console.log("DELETE VALUE" + JSON.stringify(deletedValue));
+      console.log("DELETE CONTEXT: " + JSON.stringify(context.params));
+
+
+      // perform desired operations ...
+    });
+
+//STEP - DELETE
+exports.deleteStep = functions.firestore
+    .document('steps/{stepId}')
+    .onDelete((snap, context) => {
+      // Get an object representing the document prior to deletion
+      const deletedValue = snap.data();
+      const stepId = context.params.stepId;
+      const journeyId = deletedValue.createdBy.id;
+      //this is same as stepId above
+      const stepId_docId = ourJourneys.doc(journeyId).collection("stepIds").where("stepId", "==", stepId);
+      const stepImageRefs = [];
+
+      //check for step type - [images, videos, text]
+      //based on step stye delelte appropriate from storage
+      //get all imageReferences for the delete step
+      stepImageRefs = getStepImageReferences(deletedValue);
+
+      //delete all step realated images
+      deleteStepImages(stepImageRefs);
+
+      //delete the step from StepIds collection
+      deleteFromStepSubCollection(stepId_docId);
+
+    });
+
+//STEP - return all the imageReferences for the deleting step
+function getStepImageReferences(deletedValue){
+  let tempImgRefArray = [];
+  for(let i=0; i< deletedValue.images.length; i++){
+    tempImgRefArray.push(deletedValue.images[i].imageReference);
+  }
+
+  return tempImgRefArray;
+}
+
+//STEP - delete all Images for the Step from STORAGE
+function deleteStepImages(stepImageRefs){
+  for(let i=0; i < stepImageRefs.length; i++){
+    // Create a reference to the file to delete
+    var deleteImageRef = admin_storage.ref().child(stepImageRefs[i]);
+    // Delete the file
+    deleteImageRef.delete().then(function() {
+      // File deleted successfully
+      console.log("Step Image Deleted successfully");
+    }).catch(function(error) {
+      // Uh-oh, an error occurred!
+      console.error("Error deleting step image - ", error);
+    });
+  }
+}
+
+//
+//STEP - delete the step from StepIds Sub-Collection inside Journey Collection
+function deleteFromStepSubCollection(stepId_docId){
+  ourJourneys.collection("stepIds").doc(stepId_docId).delete().then(function() {
+    console.log("Document successfully deleted!");
+  }).catch(function(error) {
+      console.error("Error removing document: ", error);
+  });
+}
+
+
+//JOURNEY - DELETE
+exports.deleteJourney = functions.firestore
+    .document('journeys/{journeyId}')
+    .onDelete((snap, context) => {
+      // Get an object representing the document prior to deletion
+      const deletedValue = snap.data();
+      const journeyId = context.params.journeyId;
+      const journeyImageRef = deletedValue.image.imageReference;
+
+      //clean up image
+      deleteJourneyImage(journeyImageRef);
+
+      //clean up post and stepId sub-collection - ???
+      //CONTINUE HERE!!!
+
+
+    });
+
+function deleteJourneyImage(journeyImageRef){
+  // Create a reference to the file to delete
+  var deleteImageRef = admin_storage.ref().child(journeyImageRef);
+  // Delete the file
+  deleteImageRef.delete().then(function() {
+    // File deleted successfully
+    console.log("Journey Image Deleted successfully");
+  }).catch(function(error) {
+    // Uh-oh, an error occurred!
+    console.error("Error deleting Journey image - ", error);
+  });
+}
+
+function deleteCollection(db, collectionPath, batchSize) {
+  var collectionRef = db.collection(collectionPath);
+  var query = collectionRef.orderBy('__name__').limit(batchSize);
+
+  return new Promise((resolve, reject) => {
+    deleteQueryBatch(db, query, batchSize, resolve, reject);
+  });
+}
+
+function deleteQueryBatch(db, query, batchSize, resolve, reject) {
+  query.get()
+      .then((snapshot) => {
+        // When there are no documents left, we are done
+        if (snapshot.size == 0) {
+          return 0;
+        }
+
+        // Delete documents in a batch
+        var batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+
+        return batch.commit().then(() => {
+          return snapshot.size;
+        });
+      }).then((numDeleted) => {
+        if (numDeleted === 0) {
+          resolve();
+          return;
+        }
+
+        // Recurse on the next process tick, to avoid
+        // exploding the stack.
+        process.nextTick(() => {
+          deleteQueryBatch(db, query, batchSize, resolve, reject);
+        });
+      })
+      .catch(reject);
+}
+
+
+
+//ELASTIC SEARCH
+const request = require('request-promise');
+
+exports.indexUsersToElastic = functions.firestore.document('/users/{userId}')
+  .onWrite((change, context) => {
+    let userData = change.after.data();
+    let userId = context.params.userId;
+
+    console.log('Indexing User: ', userData);
+
+    let elasticSearchConfig = functions.config().elasticsearch;
+    let elasticSearchUrl = elasticSearchConfig.url + 'users/' + userId;
+    let elasticSearchMethod = userData ? 'POST' : 'DELETE';
+
+    let elasticSearchRequest = {
+      method: elasticSearchMethod,
+      url: elasticSearchUrl,
+      auth: {
+        username: elasticSearchConfig.username,
+        password: elasticSearchConfig.password,
+      },
+      body: userData,
+      json: true
+    };
+
+    return request(elasticSearchRequest).then(response => {
+      console.log('ElasticSearch response', response);
+    });
+  });
+
+
+  
