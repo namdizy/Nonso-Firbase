@@ -1,5 +1,5 @@
 const functions = require('firebase-functions');
-
+const request = require('request-promise');
 const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
 
@@ -361,7 +361,7 @@ function deleteQueryBatch(db, query, batchSize, resolve, reject) {
 
 
 //ELASTIC SEARCH
-const request = require('request-promise');
+
 
 exports.indexUsersToElastic = functions.firestore.document('/users/{userId}')
   .onWrite((change, context) => {
@@ -391,4 +391,8 @@ exports.indexUsersToElastic = functions.firestore.document('/users/{userId}')
   });
 
 
-  
+  exports.indexTagsToElasticSearch = functions.firestore.document('/categories/categories')
+    .onWrite((change, context) => {
+
+
+    });
